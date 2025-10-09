@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const db = require("../config/db");
 
 class Friend {
   static async getFriends(userId) {
@@ -16,23 +16,23 @@ class Friend {
 
   static async addFriend(userId, friendId) {
     const [result] = await db.query(
-      'INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, ?)',
-      [userId, friendId, 'pending']
+      "INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, ?)",
+      [userId, friendId, "pending"]
     );
     return result.insertId;
   }
 
   static async acceptFriend(userId, friendId) {
     const [result] = await db.query(
-      'UPDATE friends SET status = ? WHERE user_id = ? AND friend_id = ?',
-      ['accepted', friendId, userId]
+      "UPDATE friends SET status = ? WHERE user_id = ? AND friend_id = ?",
+      ["accepted", friendId, userId]
     );
     return result.affectedRows > 0;
   }
 
   static async removeFriend(userId, friendId) {
     const [result] = await db.query(
-      'DELETE FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)',
+      "DELETE FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)",
       [userId, friendId, friendId, userId]
     );
     return result.affectedRows > 0;
@@ -40,8 +40,8 @@ class Friend {
 
   static async isFriend(userId, friendId) {
     const [rows] = await db.query(
-      'SELECT * FROM friends WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)) AND status = ?',
-      [userId, friendId, friendId, userId, 'accepted']
+      "SELECT * FROM friends WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)) AND status = ?",
+      [userId, friendId, friendId, userId, "accepted"]
     );
     return rows.length > 0;
   }

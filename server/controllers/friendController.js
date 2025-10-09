@@ -1,5 +1,5 @@
-const Friend = require('../models/Friend');
-const User = require('../models/User');
+const Friend = require("../models/Friend");
+const User = require("../models/User");
 
 const friendController = {
   // Get all friends
@@ -7,17 +7,17 @@ const friendController = {
     try {
       const userId = req.user.userId;
       const friends = await Friend.getFriends(userId);
-      
+
       // Add online status (you can enhance this with socket.io)
-      const friendsWithStatus = friends.map(friend => ({
+      const friendsWithStatus = friends.map((friend) => ({
         ...friend,
-        online: false // TODO: Implement real online status
+        online: false, // TODO: Implement real online status
       }));
 
       res.json(friendsWithStatus);
     } catch (error) {
-      console.error('Get friends error:', error);
-      res.status(500).json({ message: 'Server error' });
+      console.error("Get friends error:", error);
+      res.status(500).json({ message: "Server error" });
     }
   },
 
@@ -28,32 +28,34 @@ const friendController = {
       const { username } = req.body;
 
       if (!username) {
-        return res.status(400).json({ message: 'Username is required' });
+        return res.status(400).json({ message: "Username is required" });
       }
 
       // Find user by username
       const friend = await User.findByUsername(username);
       if (!friend) {
-        return res.status(404).json({ message: 'User not found' });
+        return res.status(404).json({ message: "User not found" });
       }
 
       if (friend.id === userId) {
-        return res.status(400).json({ message: 'Cannot add yourself as friend' });
+        return res
+          .status(400)
+          .json({ message: "Cannot add yourself as friend" });
       }
 
       // Check if already friends
       const alreadyFriends = await Friend.isFriend(userId, friend.id);
       if (alreadyFriends) {
-        return res.status(400).json({ message: 'Already friends' });
+        return res.status(400).json({ message: "Already friends" });
       }
 
       // Add friend
       await Friend.addFriend(userId, friend.id);
 
-      res.json({ message: 'Friend request sent successfully' });
+      res.json({ message: "Friend request sent successfully" });
     } catch (error) {
-      console.error('Add friend error:', error);
-      res.status(500).json({ message: 'Server error' });
+      console.error("Add friend error:", error);
+      res.status(500).json({ message: "Server error" });
     }
   },
 
@@ -61,18 +63,54 @@ const friendController = {
   acceptFriend: async (req, res) => {
     try {
       const userId = req.user.userId;
-      const { friendId } = req.params;
 
-      const success = await Friend.acceptFriend(userId, parseInt(friendId));
-      
+      // support both /:friendId and body { friendId | requestId }
+      const paramId =
+        req.params && (req.params.friendId ?? req.params.requestId);
+      const bodyId = req.body && (req.body.friendId ?? req.body.requestId);
+      const rawId = paramId ?? bodyId;
+
+      if (!rawId) {
+        console.error("Accept friend: missing friendId/requestId", {
+          params: req.params,
+          body: req.body,
+        });
+        return res
+          .status(400)
+          .json({ message: "friendId/requestId is required" });
+      }
+
+      const friendId = parseInt(rawId, 10);
+      if (Number.isNaN(friendId)) {
+        return res.status(400).json({ message: "Invalid friendId/requestId" });
+      }
+
+      // Call model
+      const result = await Friend.acceptFriend(userId, friendId);
+
+      // Accept common return types from model:
+      // - boolean true/false
+      // - number of affected rows
+      // - object/row returned
+      const success =
+        result === true ||
+        result === 1 ||
+        (typeof result === "number" && result > 0) ||
+        (result && typeof result === "object");
+
       if (success) {
-        res.json({ message: 'Friend request accepted' });
+        return res.json({ message: "Friend request accepted" });
       } else {
-        res.status(404).json({ message: 'Friend request not found' });
+        console.warn("Accept friend: not found or no-op", {
+          userId,
+          friendId,
+          result,
+        });
+        return res.status(404).json({ message: "Friend request not found" });
       }
     } catch (error) {
-      console.error('Accept friend error:', error);
-      res.status(500).json({ message: 'Server error' });
+      console.error("Accept friend error:", error);
+      return res.status(500).json({ message: "Server error" });
     }
   },
 
@@ -83,15 +121,15 @@ const friendController = {
       const { friendId } = req.params;
 
       const success = await Friend.removeFriend(userId, parseInt(friendId));
-      
+
       if (success) {
-        res.json({ message: 'Friend removed successfully' });
+        res.json({ message: "Friend removed successfully" });
       } else {
-        res.status(404).json({ message: 'Friend not found' });
+        res.status(404).json({ message: "Friend not found" });
       }
     } catch (error) {
-      console.error('Remove friend error:', error);
-      res.status(500).json({ message: 'Server error' });
+      console.error("Remove friend error:", error);
+      res.status(500).json({ message: "Server error" });
     }
   },
 
@@ -100,13 +138,13 @@ const friendController = {
     try {
       const userId = req.user.userId;
       const requests = await Friend.getPendingRequests(userId);
-      
+
       res.json(requests);
     } catch (error) {
-      console.error('Get pending requests error:', error);
-      res.status(500).json({ message: 'Server error' });
+      console.error("Get pending requests error:", error);
+      res.status(500).json({ message: "Server error" });
     }
-  }
+  },
 };
 
 module.exports = friendController;
